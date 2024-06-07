@@ -55,20 +55,21 @@
 
 --- a/target/imagebuilder/files/Makefile
 +++ b/target/imagebuilder/files/Makefile
-@@ -131,21 +131,47 @@ BUILD_PACKAGES:=$(sort $(DEFAULT_PACKAGES) $($(USER_PROFILE)_PACKAGES) kernel)
+@@ -131,21 +131,46 @@ BUILD_PACKAGES:=$(sort $(DEFAULT_PACKAGES) $($(USER_PROFILE)_PACKAGES) kernel)
  # "-pkgname" in the package list means remove "pkgname" from the package list
  BUILD_PACKAGES:=$(filter-out $(filter -%,$(BUILD_PACKAGES)) $(patsubst -%,%,$(filter -%,$(BUILD_PACKAGES))),$(BUILD_PACKAGES))
  BUILD_PACKAGES:=$(USER_PACKAGES) $(BUILD_PACKAGES)
-+IMAGE_SIZE="$(shell echo $$(echo $($(USER_PROFILE)_IMAGE_SIZE) | cut -d k -f1))"; \
-+if [[ ! "`echo "$$IMAGE_SIZE" | grep "m"`" ]]; then \
-+if [[ $$IMAGE_SIZE -lt 20480 ]]; then \
-+	BUILD_PACKAGES+="-coremark -htop -bash -openssh-sftp-server "; \
++IMAGE_SIZE:="$(shell echo $$(echo $($(USER_PROFILE)_IMAGE_SIZE) | cut -d k -f1))"
++BUILD_PACKAGES:=$(shell if [[ ! "`echo "$(IMAGE_SIZE)" | grep "m"`" ]]; then \
++if [[ $(IMAGE_SIZE) -lt 20480 ]]; then \
++echo " $(BUILD_PACKAGES) -coremark -htop -bash -openssh-sftp-server "; \
 +fi \
-+fi
++fi)
  BUILD_PACKAGES:=$(filter-out $(filter -%,$(BUILD_PACKAGES)) $(patsubst -%,%,$(filter -%,$(BUILD_PACKAGES))),$(BUILD_PACKAGES))
  PACKAGES:=
  
  _call_image: staging_dir/host/.prereq-build
+-	echo 'Building images for $(BOARD)$(if $($(USER_PROFILE)_NAME), - $($(USER_PROFILE)_NAME))'
 +	[ "$(DATE)" ] && DATE="$(DATE)" || DATE="`date +'%m.%d.%Y'`"; \
 +	mkdir -p $(USER_FILES)/etc/uci-defaults || true; \
 +	echo -e " \
@@ -77,14 +78,13 @@
 +	sed -i \"s/OpenWrt .* by/OpenWrt $$DATE by/\" /etc/banner \n \
 +	echo \"$$DATE\" >/etc/openwrt_version \n \
 +	"> $(USER_FILES)/etc/uci-defaults/99-version; \
- 	echo 'Building images for $(BOARD)$(if $($(USER_PROFILE)_NAME), - $($(USER_PROFILE)_NAME))'
++	echo 'Building images for $(BOARD)$(if $($(USER_PROFILE)_NAME), - $($(USER_PROFILE)_NAME))'; \
  	echo 'Packages: $(BUILD_PACKAGES)'
  	echo
  	rm -rf $(TARGET_DIR) $(TARGET_DIR_ORIG)
  	mkdir -p $(TARGET_DIR) $(BIN_DIR) $(TMP_DIR) $(DL_DIR)
-+	IMAGE_SIZE="$(shell echo $$(echo $($(USER_PROFILE)_IMAGE_SIZE) | cut -d k -f1))"; \
-+	if [[ ! "`echo "$$IMAGE_SIZE" | grep "m"`" ]]; then \
-+	if [[ $$IMAGE_SIZE -lt 20480 ]]; then \
++	if [[ ! "`echo "$(IMAGE_SIZE)" | grep "m"`" ]]; then \
++	if [[ $(IMAGE_SIZE) -lt 20480 ]]; then \
 +		if [[ ! "`grep "small_flash" $(TOPDIR)/repositories.conf`" ]]; then \
 +			echo "`grep openwrt_kiddin9 $(TOPDIR)/repositories.conf | sed -e 's/kiddin9/small_flash/g'`" >>$(TOPDIR)/repositories.conf; \
 +		fi \
@@ -103,7 +103,7 @@
  
  _call_manifest: FORCE
  	rm -rf $(TARGET_DIR)
-@@ -186,7 +212,17 @@ package_install: FORCE
+@@ -186,7 +211,17 @@ package_install: FORCE
  	@echo Installing packages...
  	$(OPKG) install $(firstword $(wildcard $(LINUX_DIR)/libc_*.ipk $(PACKAGE_DIR)/libc_*.ipk))
  	$(OPKG) install $(firstword $(wildcard $(LINUX_DIR)/kernel_*.ipk $(PACKAGE_DIR)/kernel_*.ipk))
@@ -122,13 +122,12 @@
  
  prepare_rootfs: FORCE
  	@echo
-@@ -200,12 +236,18 @@ prepare_rootfs: FORCE
+@@ -200,12 +235,17 @@ prepare_rootfs: FORCE
  		) \
  	)
  	$(call prepare_rootfs,$(TARGET_DIR),$(USER_FILES),$(DISABLED_SERVICES))
-+	IMAGE_SIZE="$(shell echo $$(echo $($(USER_PROFILE)_IMAGE_SIZE) | cut -d k -f1))"; \
-+	if [[ ! "`echo "$$IMAGE_SIZE" | grep "m"`" ]]; then \
-+	if [[ $$IMAGE_SIZE -lt 20480 ]]; then \
++	if [[ ! "`echo "$(IMAGE_SIZE)" | grep "m"`" ]]; then \
++	if [[ $(IMAGE_SIZE) -lt 20480 ]]; then \
 +		echo "`grep openwrt_kiddin9 $(TOPDIR)/repositories.conf | sed -e 's/kiddin9/small_flash/g'`" >>$(BUILD_DIR)/root-ramips/etc/opkg/distfeeds.conf; \
 +	fi \
 +	fi
